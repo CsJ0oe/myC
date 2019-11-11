@@ -65,7 +65,12 @@ decl: var_decl PV              {}
 ;
 
 // I.1. Variables
-var_decl : type vlist          {}
+var_decl : type vlist          {
+  if($1 == INT)
+    printf("%s de type %d vaut %d",vlist->name,vlist->type_val,vlist->int_val);
+  if($1 == FLOAT)
+    printf("%s de type %d vaut %f",$1->name,vlist->type_val,vlist->float_val);
+}
 ;
 
 // I.2. Structures
@@ -106,12 +111,12 @@ fun_body : AO block AF         {}
 // I.4. Types
 type
 : typename pointer             {}
-| typename                     {}
+| typename                     {$$ =$1}
 ;
 
 typename
-: TINT                          {}
-| TFLOAT                        {}
+: TINT                          {$$ = INT}
+| TFLOAT                        {$$ = FLOAT}
 | VOID                          {}
 | STRUCT ID                     {}
 ;
