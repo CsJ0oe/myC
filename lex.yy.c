@@ -498,7 +498,8 @@ char *yytext;
 #include "Table_des_symboles.h"
 #include "Attribute.h"
 #include <stdio.h>
-#line 502 "lex.yy.c"
+
+#line 503 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -683,7 +684,7 @@ YY_DECL
 #line 11 "lang.l"
 
 
-#line 687 "lex.yy.c"
+#line 688 "lex.yy.c"
 
 	if ( !(yy_init) )
 		{
@@ -911,36 +912,35 @@ YY_RULE_SETUP
 #line 50 "lang.l"
 { yylval.val = new_attribute();
                            yylval.val -> type_val = INT;
-	        	               yylval.val -> int_val =  atoi (yytext);
-                           return NUMI;
-                         }
+                           yylval.val -> name = str_concat(yytext,"");
+	        	           yylval.val -> int_val =  atoi (yytext);
+                           return NUMI; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
 #line 55 "lang.l"
 { yylval.val = new_attribute();
                            yylval.val -> type_val = FLOAT;
-		                       yylval.val -> int_val =  atof (yytext);
-                           return NUMF;
-                         }
+                           yylval.val -> name = str_concat(yytext,"");
+		                   yylval.val -> float_val =  atof (yytext);
+                           return NUMF; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
 #line 60 "lang.l"
 { yylval.val = new_attribute();
-                           yylval.val -> name = string_to_sid(yytext);
-		                       return ID;
-                         }
+                           yylval.val->name = string_to_sid(yytext);
+		                   return ID; }
 	YY_BREAK
 case 32:
 /* rule 32 can match eol */
 YY_RULE_SETUP
-#line 64 "lang.l"
+#line 63 "lang.l"
 { /* on avale sans rendre la main */; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 65 "lang.l"
+#line 64 "lang.l"
 ECHO;
 	YY_BREAK
 #line 947 "lex.yy.c"
@@ -1937,4 +1937,4 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 65 "lang.l"
+#line 64 "lang.l"

@@ -138,7 +138,7 @@ inst_list: inst PV inst_list   {} // DONE
 ;
 
 inst:
-exp                           {} // ERROR ???
+exp                           {} // ERROR ??? 1+2=5;
 | AO block AF                 {}
 | aff                         {} // DONE
 | ret                         {} // DONE
@@ -154,17 +154,14 @@ aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
                                 fprintf(stdout, "r%d = r%d;\n",x->reg_num,$3->reg_num);
                                 /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$3->name);
                               }
-| ID STAR EQ exp              { attribute x = get_symbol_value($1->name);
-                                if (x->type_val != $4->type_val) print_error("non compatible types");
-                                fprintf(stdout, "r%d = r%d * r%d;\n",x->reg_num,x->reg_num,$4->reg_num);
-                                /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$4->name); 
-                              } // CHANGED ??? exp STAR EQ exp
+| STAR exp EQ exp             { 
+                              } // ERROR ??? STAR exp  EQ exp
 ;
 
 
 // II.2 Return
 ret : RETURN exp              {}
-| RETURN PO exp PF            {} // CHANGED ??? RETURN PO PF
+| RETURN PO PF                {} // ERROR ??? RETURN PO exp PF
 ;
 
 // II.3. Conditionelles
@@ -238,12 +235,17 @@ exp
 // II.3.2. Booléens
 
 | NOT exp %prec UNA           {}
-| exp INF exp                 {}
-| exp SUP exp                 {}
+| exp INF exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
+                                attribute x = new_attribute();
+                                x->type_val = $1->type_val;
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = r%d < r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+                                $$ = x; }
+| exp SUP exp                 {} // SIDI
 | exp EQUAL exp               {}
-| exp DIFF exp                {}
+| exp DIFF exp                {} // SIDI
 | exp AND exp                 {}
-| exp OR exp                  {}
+| exp OR exp                  {} // SIDI
 
 // II.3.3. Structures
 
