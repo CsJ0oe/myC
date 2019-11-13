@@ -242,9 +242,9 @@ exp
                                 fprintf(stdout,"r%d = r%d < r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | exp SUP exp                 {} // SIDI
-| exp EQUAL exp               {}
+| exp EQUAL exp               {} // SIDI
 | exp DIFF exp                {} // SIDI
-| exp AND exp                 {}
+| exp AND exp                 {} // SIDI
 | exp OR exp                  {} // SIDI
 
 // II.3.3. Structures
