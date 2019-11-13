@@ -11,14 +11,14 @@
 #ifndef ATTRIBUTE_H
 #define ATTRIBUTE_H
 
-typedef enum {INT, FLOAT} type;
+typedef enum {VOD, INT, FLOAT, STRCT} type;
 
 struct ATTRIBUTE {
-  char * name;
+  char* name;
   int int_val;
   float float_val;
   type type_val;
-  int reg_number;
+  int reg_num;
   
   /* other attribute's fields can goes here */ 
 
@@ -35,6 +35,12 @@ attribute mult_attribute(attribute x, attribute y);
 attribute minus_attribute(attribute x, attribute y);
 attribute div_attribute(attribute x, attribute y);
 attribute neg_attribute(attribute x);
+
+
+int new_register();
+char* print_type(type t);
+void print_error(char* ch);
+char* str_concat(char* a, char* b);
 
 #endif
 

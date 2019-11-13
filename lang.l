@@ -49,13 +49,15 @@
 
 [0-9]+                   { yylval.val = new_attribute();
                            yylval.val -> type_val = INT;
-	        	   yylval.val -> int_val =  atoi (yytext);
+                           yylval.val -> name = str_concat(yytext,"");
+	        	           yylval.val -> int_val =  atoi (yytext);
                            return NUMI; }
 [0-9]*"."[0-9]+          { yylval.val = new_attribute();
                            yylval.val -> type_val = FLOAT;
-		           yylval.val -> int_val =  atof (yytext);
+                           yylval.val -> name = str_concat(yytext,"");
+		                   yylval.val -> float_val =  atof (yytext);
                            return NUMF; }
 [A-Za-z][A-Za-z0-9]*     { yylval.val = new_attribute();
-                           yylval.val -> name = string_to_sid(yytext);
-		           return ID; }
+                           yylval.val->name = string_to_sid(yytext);
+		                   return ID; }
 [ \t\n]                   { /* on avale sans rendre la main */; }
