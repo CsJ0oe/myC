@@ -37,10 +37,13 @@ attribute div_attribute(attribute x, attribute y);
 attribute neg_attribute(attribute x);
 
 
-int new_register();
+
 char* print_type(type t);
 void print_error(char* ch);
 char* str_concat(char* a, char* b);
+
+int new_register();
+int new_label();
 
 #endif
 

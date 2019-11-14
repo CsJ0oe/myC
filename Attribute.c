@@ -5,6 +5,7 @@
 #include <string.h>
 
 int next_reg_num = 1;
+int next_label = 1;
 
 attribute new_attribute () {
   attribute r;
@@ -67,6 +68,11 @@ int new_register(type t) {
     fprintf(stdout,"%s r%d;\n",print_type(t),next_reg_num);
     return next_reg_num++;
 };
+
+int new_label() {
+    return next_label++;
+};
+
 
 char* str_concat(char* a, char* b) {
     char* r = malloc(strlen(a)+strlen(b)+2);

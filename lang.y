@@ -23,6 +23,7 @@ void yyerror (char* s) {
 	attribute val;
 	char* str;
 	type typ;
+	int num;
 }
 %token <val> NUMI NUMF
 %token <val> ID
@@ -38,6 +39,7 @@ void yyerror (char* s) {
 %type <val> exp
 %type <str> vlist 
 %type <typ> typename type vir
+%type <num> while_cond while
 
 %left DIFF EQUAL SUP INF       // low priority on comparison
 %left PLUS MOINS               // higher priority on + - 
@@ -170,7 +172,6 @@ if bool_cond inst             {}
 |  else inst                  {}
 ;
 
-
 bool_cond : PO exp PF         {}
 ;
 
@@ -182,12 +183,12 @@ else : ELSE                   {}
 
 // II.4. Iterations
 
-loop : while while_cond inst  {}
+loop : while while_cond inst  { fprintf(stdout,"goto label%d;\nlabel%d:\n",$1,$2); }
 ;
 
-while_cond : PO exp PF        {}
+while_cond : PO exp PF        { int x = new_label(); fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$=x; }
 
-while : WHILE                 {}
+while : WHILE                 { int x = new_label(); fprintf(stdout,"label%d:\n",x); $$=x; }
 ;
 
 
