@@ -39,7 +39,7 @@ void yyerror (char* s) {
 %type <val> exp
 %type <str> vlist 
 %type <typ> typename type vir
-%type <num> while_cond while
+%type <num> while_cond while bool_cond else
 
 %left DIFF EQUAL SUP INF       // low priority on comparison
 %left PLUS MOINS               // higher priority on + - 
@@ -100,10 +100,12 @@ fun_head : ID PO PF            {}
 params: type ID vir params     {}
 | type ID                      {}
 
-vlist: ID vir vlist            { $1->type_val = ($<typ>0); $1->reg_num = new_register($1->type_val);
+vlist: ID vir vlist            { $1->type_val = ($<typ>0); //$1->reg_num = new_register($1->type_val);
+                                 fprintf(stdout,"%s %s;\n",print_type($1->type_val),$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */  $$ = str_concat($1->name,str_concat(",",$3)); }
-| ID                           { $1->type_val = ($<typ>0); $1->reg_num = new_register($1->type_val);
+| ID                           { $1->type_val = ($<typ>0); //$1->reg_num = new_register($1->type_val);
+                                 fprintf(stdout,"%s %s;\n",print_type($1->type_val),$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */ $$ = $1->name; }
 ;
@@ -153,7 +155,7 @@ exp                           {} // ERROR ??? 1+2=5;
 
 aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
                                 if (x->type_val != $3->type_val) print_error("non compatible types");
-                                fprintf(stdout, "r%d = r%d;\n",x->reg_num,$3->reg_num);
+                                fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
                                 /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$3->name);
                               }
 | STAR exp EQ exp             { 
@@ -168,17 +170,21 @@ ret : RETURN exp              {}
 
 // II.3. Conditionelles
 cond :
-if bool_cond inst             {}
-|  else inst                  {}
+if bool_cond inst else inst   {fprintf(stdout,"label%d:\n",$4);} //inst <=> stat
+|  if bool_cond inst          {fprintf(stdout,"label%d:\n",$2); }
 ;
 
-bool_cond : PO exp PF         {}
+stat:
+AO block AF                   {}
+;
+
+bool_cond : PO exp PF         {int x = new_label();fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$ = x;}
 ;
 
 if : IF                       {}
 ;
 
-else : ELSE                   {}
+else : ELSE                   {int x = new_label();fprintf(stdout,"goto label%d;\nlabel%d:\n",x,$<num>-1); $$ = x;}
 ;
 
 // II.4. Iterations
@@ -225,7 +231,10 @@ exp
                                 fprintf(stdout,"r%d = r%d / r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | PO exp PF                   { $$ = $2; }
-| ID                          { attribute x = get_symbol_value($1->name); $$ = x; }
+| ID                          { attribute x = get_symbol_value($1->name);
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = %s;\n",x->reg_num,x->name);
+                                $$ = x; }
 | NUMI                        { $1->reg_num = new_register($1->type_val); fprintf(stdout,"r%d = %s;\n",$1->reg_num,$1->name); $$ = $1; }
 | NUMF                        { $1->reg_num = new_register($1->type_val); fprintf(stdout,"r%d = %s;\n",$1->reg_num,$1->name); $$ = $1; }
 
@@ -242,11 +251,36 @@ exp
                                 x->reg_num = new_register(x->type_val);
                                 fprintf(stdout,"r%d = r%d < r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
-| exp SUP exp                 {} // SIDI
-| exp EQUAL exp               {} // SIDI
-| exp DIFF exp                {} // SIDI
-| exp AND exp                 {} // SIDI
-| exp OR exp                  {} // SIDI
+| exp SUP exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
+                                attribute x = new_attribute();
+                                x->type_val = $1->type_val;
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = r%d > r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+                                $$ = x; } // SIDI
+| exp EQUAL exp               { if ($1->type_val != $3->type_val) print_error("non compatible types");
+                                attribute x = new_attribute();
+                                x->type_val = $1->type_val;
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = r%d == r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+                                $$ = x; } // SIDI
+| exp DIFF exp                {if ($1->type_val != $3->type_val) print_error("non compatible types");
+                                attribute x = new_attribute();
+                                x->type_val = $1->type_val;
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = r%d != r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+                                $$ = x; } // SIDI
+| exp AND exp                 {if ($1->type_val != $3->type_val) print_error("non compatible types");
+                                attribute x = new_attribute();
+                                x->type_val = $1->type_val;
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = r%d & r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+                                $$ = x; } // SIDI
+| exp OR exp                  {if ($1->type_val != $3->type_val) print_error("non compatible types");
+                                attribute x = new_attribute();
+                                x->type_val = $1->type_val;
+                                x->reg_num = new_register(x->type_val);
+                                fprintf(stdout,"r%d = r%d | r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+                                $$ = x; } // SIDI
 
 // II.3.3. Structures
 
