@@ -53,11 +53,21 @@ void yyerror (char* s) {
 
 %%
 
-prog : block                   {} // DONE
+prog : block                   { ; }
+;
+
+pre_block:
+oblock block fblock            { ; }
+;
+
+oblock: AO                     { enter_block(); }
+;
+
+fblock: AF                     { exit_block(); }
 ;
 
 block:
-decl_list inst_list            {} // DONE
+decl_list inst_list            { ; }
 ;
 
 // I. Declarations
@@ -100,11 +110,13 @@ fun_head : ID PO PF            {}
 params: type ID vir params     {}
 | type ID                      {}
 
-vlist: ID vir vlist            { $1->type_val = ($<typ>0); //$1->reg_num = new_register($1->type_val);
+vlist: ID vir vlist            { $1->type_val = ($<typ>0);
+                                 $1->num_block = curr_block();
                                  fprintf(stdout,"%s %s;\n",print_type($1->type_val),$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */  $$ = str_concat($1->name,str_concat(",",$3)); }
-| ID                           { $1->type_val = ($<typ>0); //$1->reg_num = new_register($1->type_val);
+| ID                           { $1->type_val = ($<typ>0);
+                                 $1->num_block = curr_block();
                                  fprintf(stdout,"%s %s;\n",print_type($1->type_val),$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */ $$ = $1->name; }
@@ -113,7 +125,7 @@ vlist: ID vir vlist            { $1->type_val = ($<typ>0); //$1->reg_num = new_r
 vir : VIR                      { $$ = $<typ>-1; }
 ;
 
-fun_body : AO block AF         {}
+fun_body : pre_block           {}
 ;
 
 // I.4. Types
@@ -143,7 +155,7 @@ inst_list: inst PV inst_list   {} // DONE
 
 inst:
 exp                           {} // ERROR ??? 1+2=5;
-| AO block AF                 {}
+| pre_block                   {}
 | aff                         {} // DONE
 | ret                         {} // DONE
 | cond                        {}
@@ -154,7 +166,7 @@ exp                           {} // ERROR ??? 1+2=5;
 // II.1 Affectations
 
 aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
-                                if (x->type_val != $3->type_val) print_error("non compatible types");
+                                if (x->type_val == INT && x->type_val != $3->type_val) print_error("non compatible types");
                                 fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
                                 /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$3->name);
                               }
@@ -170,12 +182,13 @@ ret : RETURN exp              {}
 
 // II.3. Conditionelles
 cond :
-if bool_cond inst else inst   {fprintf(stdout,"label%d:\n",$4);} //inst <=> stat
-|  if bool_cond inst          {fprintf(stdout,"label%d:\n",$2); }
+if bool_cond stat else stat   {fprintf(stdout,"label%d:\n",$4);} //inst <=> stat
+|  if bool_cond stat          {fprintf(stdout,"label%d:\n",$2); }
 ;
 
 stat:
-AO block AF                   {}
+pre_block                     {}
+| inst PV
 ;
 
 bool_cond : PO exp PF         {int x = new_label();fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$ = x;}
@@ -189,7 +202,7 @@ else : ELSE                   {int x = new_label();fprintf(stdout,"goto label%d;
 
 // II.4. Iterations
 
-loop : while while_cond inst  { fprintf(stdout,"goto label%d;\nlabel%d:\n",$1,$2); }
+loop : while while_cond stat  { fprintf(stdout,"goto label%d;\nlabel%d:\n",$1,$2); }
 ;
 
 while_cond : PO exp PF        { int x = new_label(); fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$=x; }
@@ -201,7 +214,7 @@ while : WHILE                 { int x = new_label(); fprintf(stdout,"label%d:\n"
 // II.3 Expressions
 exp
 // II.3.0 Exp. arithmetiques
-: MOINS exp %prec UNA         { attribute x = new_attribute();
+: /*MOINS exp %prec UNA         { attribute x = new_attribute();
                                 x->type_val = $2->type_val;
                                 x->reg_num = new_register(x->type_val);
                                 fprintf(stdout,"r%d = - r%d;\n",x->reg_num,$2->reg_num);
@@ -232,6 +245,8 @@ exp
                                 $$ = x; }
 | PO exp PF                   { $$ = $2; }
 | ID                          { attribute x = get_symbol_value($1->name);
+                                fprintf(stdout, "in %d, curr %d : %d\n",x->num_block,curr_block(),in_block(x));
+                                if (!in_block(x)) print_error("noooot declared\n");
                                 x->reg_num = new_register(x->type_val);
                                 fprintf(stdout,"r%d = %s;\n",x->reg_num,x->name);
                                 $$ = x; }
@@ -287,7 +302,7 @@ exp
 | exp ARR ID                  {}
 | exp DOT ID                  {}
 
-| app                         {}
+|*/ app                         {}
 ;
        
 // II.4 Applications de fonctions

@@ -11,6 +11,8 @@
 #ifndef ATTRIBUTE_H
 #define ATTRIBUTE_H
 
+#define MAX_BLOCKS 255
+
 typedef enum {VOD, INT, FLOAT, STRCT} type;
 
 struct ATTRIBUTE {
@@ -19,6 +21,7 @@ struct ATTRIBUTE {
   float float_val;
   type type_val;
   int reg_num;
+  int num_block;
   
   /* other attribute's fields can goes here */ 
 
@@ -44,6 +47,12 @@ char* str_concat(char* a, char* b);
 
 int new_register();
 int new_label();
+
+int enter_block();
+int exit_block();
+int curr_block();
+int in_block(attribute);
+
 
 #endif
 
