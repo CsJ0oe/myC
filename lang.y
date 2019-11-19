@@ -13,7 +13,6 @@ extern int yyparse();
 
 void yyerror (char* s) {
   printf ("%s\n",s);
-  
 }
 		
 
@@ -110,14 +109,14 @@ vlist: ID vir vlist            { if (exist_symbol_value($1->name)) print_error("
                                  $1->type_val = ($<val>0->type_val);
                                  $1->num_star = ($<val>0->num_star);
                                  $1->num_block = curr_block();
-                                 fprintf(stdout,"%s(%d) %s;\n",print_type($1->type_val),$1->num_star,$1->name);
+                                 fprintf(stdout,"%s %s%s;\n",print_type($1->type_val),print_star($1->num_star),$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */  $$ = str_concat($1->name,str_concat(",",$3)); }
 | ID                           { if (exist_symbol_value($1->name)) print_error("already declared");
                                  $1->type_val = ($<val>0->type_val);
                                  $1->num_star = ($<val>0->num_star);
                                  $1->num_block = curr_block();
-                                 fprintf(stdout,"%s(%d) %s;\n",print_type($1->type_val),$1->num_star,$1->name);
+                                 fprintf(stdout,"%s %s%s;\n",print_type($1->type_val),print_star($1->num_star),$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */ $$ = $1->name; }
 ;
@@ -174,12 +173,13 @@ oblock block fblock           { ; }
 // II.1 Affectations
 
 aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
-                                if (x->type_val == INT && x->type_val != $3->type_val) print_error("non compatible types");
+                                if (!type_compatible(x,$3)) print_error("non compatible types");
                                 fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
                                 /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$3->name);
                               }
-| STAR exp EQ exp             { 
-                              } // ERROR ??? STAR exp  EQ exp
+| STAR exp EQ exp             { if (!type_compatible($2,$4)) print_error("non compatible types");
+                                fprintf(stdout, "*r%d = r%d;\n",$2->reg_num,$4->reg_num);
+                              }
 ;
 
 
@@ -219,46 +219,50 @@ exp
 // II.3.0 Exp. arithmetiques
 : MOINS exp %prec UNA         { attribute x = new_attribute();
                                 x->type_val = $2->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = - r%d;\n",x->reg_num,$2->reg_num);
                                 $$ = x; }
 | exp PLUS exp                { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d + r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | exp MOINS exp               { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d - r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | exp STAR exp                { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d * r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | exp DIV exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d / r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | PO exp PF                   { $$ = $2; }
 | ID                          { attribute x = get_symbol_value($1->name);
-                                fprintf(stdout, "in %d, curr %d : %d\n",x->num_block,curr_block(),in_block(x));
                                 if (!in_block(x)) print_error("not declared\n");
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = %s;\n",x->reg_num,x->name);
                                 $$ = x; }
-| NUMI                        { $1->reg_num = new_register($1->type_val); fprintf(stdout,"r%d = %s;\n",$1->reg_num,$1->name); $$ = $1; }
-| NUMF                        { $1->reg_num = new_register($1->type_val); fprintf(stdout,"r%d = %s;\n",$1->reg_num,$1->name); $$ = $1; }
+| NUMI                        { $1->reg_num = new_register($1); fprintf(stdout,"r%d = %s;\n",$1->reg_num,$1->name); $$ = $1; }
+| NUMF                        { $1->reg_num = new_register($1); fprintf(stdout,"r%d = %s;\n",$1->reg_num,$1->name); $$ = $1; }
 
 // II.3.1 Déréférencement
 
-| STAR exp %prec UNA          {}
+| STAR exp %prec UNA          { attribute x = copy_attribute($2);
+                                x->num_star--;
+                                x->reg_num = new_register(x);
+                                fprintf(stdout,"r%d = *r%d;\n",x->reg_num,$2->reg_num);
+                                $$ = x; 
+                              }
 
 // II.3.2. Booléens
 
@@ -266,37 +270,37 @@ exp
 | exp INF exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d < r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; }
 | exp SUP exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d > r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
 | exp EQUAL exp               { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d == r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
 | exp DIFF exp                {if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d != r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
 | exp AND exp                 {if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d & r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
 | exp OR exp                  {if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
-                                x->reg_num = new_register(x->type_val);
+                                x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d | r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
 

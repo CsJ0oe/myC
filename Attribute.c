@@ -7,6 +7,7 @@
 attribute new_attribute() {
   attribute r;
   r  = malloc (sizeof(struct ATTRIBUTE));
+  r->num_ref = 0;
   return r;
 };
 
@@ -41,9 +42,18 @@ void print_error(char* ch) {
     exit(-1);
 };
 
+int type_compatible(attribute x1, attribute x2){
+  return 1;
+};
+
+char* print_star(int n) {
+  if (n <= 0) return "";
+  return str_concat("*",print_star(n-1));
+}
+
 int next_reg_num = 1;
-int new_register(type t) {
-    fprintf(stdout,"%s r%d;\n",print_type(t),next_reg_num);
+int new_register(attribute x) {
+    fprintf(stdout,"%s %sr%d;\n",print_type(x->type_val),print_star(x->num_star),next_reg_num);
     return next_reg_num++;
 };
 

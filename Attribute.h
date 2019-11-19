@@ -20,7 +20,8 @@ struct ATTRIBUTE {
   int int_val;
   float float_val;
   type type_val;
-  type num_star;
+  int num_star;
+  int num_ref;
   int reg_num;
   int num_block;
   
@@ -41,6 +42,9 @@ char* str_concat(char* a, char* b);
 
 int new_register();
 int new_label();
+
+char* print_star(int);
+int type_compatible(attribute, attribute);
 
 int enter_block();
 int exit_block();
