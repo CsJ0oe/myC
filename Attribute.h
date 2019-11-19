@@ -20,6 +20,7 @@ struct ATTRIBUTE {
   int int_val;
   float float_val;
   type type_val;
+  type num_star;
   int reg_num;
   int num_block;
   
@@ -32,14 +33,7 @@ typedef struct ATTRIBUTE * attribute;
 attribute new_attribute ();
 /* returns the pointeur to a newly allocated (but uninitialized) attribute value structure */
 
-
-attribute plus_attribute(attribute x, attribute y);
-attribute mult_attribute(attribute x, attribute y);
-attribute minus_attribute(attribute x, attribute y);
-attribute div_attribute(attribute x, attribute y);
-attribute neg_attribute(attribute x);
-
-
+attribute copy_attribute (attribute);
 
 char* print_type(type t);
 void print_error(char* ch);

@@ -19,6 +19,8 @@
 #include "Table_des_chaines.h"
 #include "Attribute.h"
 
+int exist_symbol_value(sid symb_id);
+
 /* get the symbol value of symb_id from the symbol table, NULL if it fails */
 attribute get_symbol_value(sid symb_id);
 

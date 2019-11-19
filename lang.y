@@ -36,10 +36,10 @@ void yyerror (char* s) {
 %token PLUS MOINS STAR DIV
 %token DOT ARR
 
-%type <val> exp
+%type <val> exp type vir
 %type <str> vlist 
-%type <typ> typename type vir
-%type <num> while_cond while bool_cond else
+%type <typ> typename 
+%type <num> while_cond while bool_cond else pointer
 
 %left DIFF EQUAL SUP INF       // low priority on comparison
 %left PLUS MOINS               // higher priority on + - 
@@ -56,9 +56,6 @@ void yyerror (char* s) {
 prog : block                   { ; }
 ;
 
-pre_block:
-oblock block fblock            { ; }
-;
 
 oblock: AO                     { enter_block(); }
 ;
@@ -72,17 +69,17 @@ decl_list inst_list            { ; }
 
 // I. Declarations
 
-decl_list : decl decl_list     {} // DONE
-|                              {} // DONE
+decl_list : decl decl_list     { ; }
+|                              { ; }
 ;
 
-decl: var_decl PV              {} // DONE
+decl: var_decl PV              { ; }
 | struct_decl PV               {}
 | fun_decl                     {}
 ;
 
 // I.1. Variables
-var_decl : type vlist          { /* FOR DEBUG */ fprintf(stdout, "// %s %s;\n",print_type($1),$2); }
+var_decl : type vlist          { /* FOR DEBUG */ fprintf(stdout, "// %s(%d) %s;\n",print_type($1->type_val),$1->num_star,$2); }
 ;
 
 // I.2. Structures
@@ -97,11 +94,10 @@ attr : type ID                 {}
 
 // I.3. Functions
 
-fun_decl : type fun            {}
+fun_decl :
+type fun_head fun_body         { fprintf(stdout, "func\n");}
 ;
 
-fun : fun_head fun_body        {}
-;
 
 fun_head : ID PO PF            {}
 | ID PO params PF              {}
@@ -110,28 +106,40 @@ fun_head : ID PO PF            {}
 params: type ID vir params     {}
 | type ID                      {}
 
-vlist: ID vir vlist            { $1->type_val = ($<typ>0);
+vlist: ID vir vlist            { if (exist_symbol_value($1->name)) print_error("already declared");
+                                 $1->type_val = ($<val>0->type_val);
+                                 $1->num_star = ($<val>0->num_star);
                                  $1->num_block = curr_block();
-                                 fprintf(stdout,"%s %s;\n",print_type($1->type_val),$1->name);
+                                 fprintf(stdout,"%s(%d) %s;\n",print_type($1->type_val),$1->num_star,$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */  $$ = str_concat($1->name,str_concat(",",$3)); }
-| ID                           { $1->type_val = ($<typ>0);
+| ID                           { if (exist_symbol_value($1->name)) print_error("already declared");
+                                 $1->type_val = ($<val>0->type_val);
+                                 $1->num_star = ($<val>0->num_star);
                                  $1->num_block = curr_block();
-                                 fprintf(stdout,"%s %s;\n",print_type($1->type_val),$1->name);
+                                 fprintf(stdout,"%s(%d) %s;\n",print_type($1->type_val),$1->num_star,$1->name);
                                  set_symbol_value($1->name,$1);
                                  /* FOR DEBUG */ $$ = $1->name; }
 ;
 
-vir : VIR                      { $$ = $<typ>-1; }
+vir : VIR                      { attribute x = copy_attribute($<val>-1); x->num_star=0; $$ = x;}
 ;
 
-fun_body : pre_block           {}
+fun_body :
+oblock block fblock           {}
 ;
 
 // I.4. Types
 type
-: typename pointer             {}
-| typename                     { $$ = $1; }
+: typename pointer             { attribute x = new_attribute();
+                                 x->type_val = $1;
+                                 x->num_star = $2;
+                                 $$ = x;
+                               }
+| typename                     { attribute x = new_attribute();
+                                 x->type_val = $1;
+                                 x->num_star = 0;
+                                 $$ = x; }
 ;
 
 typename
@@ -142,25 +150,25 @@ typename
 ;
 
 pointer
-: pointer STAR                 {}
-| STAR                         {}
+: pointer STAR                 { $$ = $1 + 1; } 
+| STAR                         { $$ = 1; }
 ;
 
 
 // II. Intructions
 
-inst_list: inst PV inst_list   {} // DONE
-| inst                         {} // DONE
+inst_list: inst inst_list   {}
+//| inst                      { ; }
+|                           { ; }
 ;
 
 inst:
-exp                           {} // ERROR ??? 1+2=5;
-| pre_block                   {}
-| aff                         {} // DONE
-| ret                         {} // DONE
-| cond                        {}
-| loop                        {}
-| PV                          {}
+oblock block fblock           { ; }
+| aff PV                      { ; }
+| ret PV                      { ; }
+| cond                        { ; }
+| loop                        { ; }
+//| PV                          {}
 ;
 
 // II.1 Affectations
@@ -182,13 +190,8 @@ ret : RETURN exp              {}
 
 // II.3. Conditionelles
 cond :
-if bool_cond stat else stat   {fprintf(stdout,"label%d:\n",$4);} //inst <=> stat
-|  if bool_cond stat          {fprintf(stdout,"label%d:\n",$2); }
-;
-
-stat:
-pre_block                     {}
-| inst PV
+if bool_cond inst else inst   {fprintf(stdout,"label%d:\n",$4);} //inst <=> stat
+|  if bool_cond inst          {fprintf(stdout,"label%d:\n",$2); }
 ;
 
 bool_cond : PO exp PF         {int x = new_label();fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$ = x;}
@@ -202,7 +205,7 @@ else : ELSE                   {int x = new_label();fprintf(stdout,"goto label%d;
 
 // II.4. Iterations
 
-loop : while while_cond stat  { fprintf(stdout,"goto label%d;\nlabel%d:\n",$1,$2); }
+loop : while while_cond inst  { fprintf(stdout,"goto label%d;\nlabel%d:\n",$1,$2); }
 ;
 
 while_cond : PO exp PF        { int x = new_label(); fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$=x; }
@@ -214,7 +217,7 @@ while : WHILE                 { int x = new_label(); fprintf(stdout,"label%d:\n"
 // II.3 Expressions
 exp
 // II.3.0 Exp. arithmetiques
-: /*MOINS exp %prec UNA         { attribute x = new_attribute();
+: MOINS exp %prec UNA         { attribute x = new_attribute();
                                 x->type_val = $2->type_val;
                                 x->reg_num = new_register(x->type_val);
                                 fprintf(stdout,"r%d = - r%d;\n",x->reg_num,$2->reg_num);
@@ -246,7 +249,7 @@ exp
 | PO exp PF                   { $$ = $2; }
 | ID                          { attribute x = get_symbol_value($1->name);
                                 fprintf(stdout, "in %d, curr %d : %d\n",x->num_block,curr_block(),in_block(x));
-                                if (!in_block(x)) print_error("noooot declared\n");
+                                if (!in_block(x)) print_error("not declared\n");
                                 x->reg_num = new_register(x->type_val);
                                 fprintf(stdout,"r%d = %s;\n",x->reg_num,x->name);
                                 $$ = x; }
@@ -302,7 +305,7 @@ exp
 | exp ARR ID                  {}
 | exp DOT ID                  {}
 
-|*/ app                         {}
+| app                         {}
 ;
        
 // II.4 Applications de fonctions

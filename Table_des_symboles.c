@@ -25,6 +25,18 @@ typedef struct elem {
 /* linked chain initial element */
 static elem * storage=NULL;
 
+int exist_symbol_value(sid symb_id) {
+	elem * tracker=storage;
+
+	/* look into the linked list for the symbol value */
+	while (tracker) {
+		if (tracker -> symbol_name == symb_id) return 1;
+		tracker = tracker -> next;
+	}
+
+	return 0;
+}
+
 /* get the symbol value of symb_id from the symbol table */
 attribute get_symbol_value(sid symb_id) {
 	elem * tracker=storage;

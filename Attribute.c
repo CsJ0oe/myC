@@ -4,47 +4,18 @@
 #include <stdio.h>
 #include <string.h>
 
-attribute new_attribute () {
+attribute new_attribute() {
   attribute r;
-  r  = malloc (sizeof (struct ATTRIBUTE));
+  r  = malloc (sizeof(struct ATTRIBUTE));
   return r;
 };
 
-
-attribute plus_attribute(attribute x, attribute y) {
-  attribute r = new_attribute();
-  /* unconditionally adding integer values */
-  r -> int_val = x -> int_val + y -> int_val;
+attribute copy_attribute(attribute x) {
+  attribute r;
+  r  = malloc (sizeof(struct ATTRIBUTE));
+  memcpy(r,x,sizeof(struct ATTRIBUTE));
   return r;
-};
-
-attribute mult_attribute(attribute x, attribute y){
-  attribute r = new_attribute();
-  /* unconditionally adding integer values */
-  r -> int_val = x -> int_val * y -> int_val;
-  return r;
-};
-
-attribute minus_attribute(attribute x, attribute y){
-  attribute r = new_attribute();
-  /* unconditionally adding integer values */
-  r -> int_val = x -> int_val - y -> int_val;
-  return r;
-};
-
-attribute div_attribute(attribute x, attribute y){
-  attribute r = new_attribute();
-  /* unconditionally adding integer values */
-  r -> int_val = x -> int_val % y -> int_val;
-  return r;
-};
-
-attribute neg_attribute(attribute x){
-  attribute r = new_attribute();
-  /* unconditionally adding integer values */
-  r -> int_val = -(x -> int_val);
-  return r;
-};
+}
 
 
 char* str_concat(char* a, char* b) {
@@ -95,6 +66,7 @@ int enter_block(){
   queue_block[queue_block_p++] = next_block++;
   return curr_block();
 };
+
 int exit_block(){
   queue_block_p--;
   return curr_block();
