@@ -15,7 +15,6 @@ void yyerror (char* s) {
   printf ("%s\n",s);
 }
 		
-
 %}
 
 %union { 
@@ -173,8 +172,9 @@ oblock block fblock           { ; }
 // II.1 Affectations
 
 aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
-                                if (!type_compatible(x,$3)) print_error("non compatible types");
-                                fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
+                                if (type_compatible(x,$3) ) fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
+                                else if(x->type_val == FLOAT && $3->type_val == INT) fprintf(stdout, "%s = (float)r%d;\n",x->name,$3->reg_num);
+                                else  print_error("non compatible types");
                                 /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$3->name);
                               }
 | STAR exp EQ exp             { if (!type_compatible($2,$4)) print_error("non compatible types");
@@ -190,17 +190,21 @@ ret : RETURN exp              {}
 
 // II.3. Conditionelles
 cond :
-if bool_cond inst else inst   {fprintf(stdout,"label%d:\n",$4);} //inst <=> stat
-|  if bool_cond inst          {fprintf(stdout,"label%d:\n",$2); }
+if bool_cond inst else inst   { fprintf(stdout,"label%d:\n",$4); } //inst <=> stat
+|  if bool_cond inst          { fprintf(stdout,"label%d:\n",$2); }
 ;
 
-bool_cond : PO exp PF         {int x = new_label();fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$ = x;}
+bool_cond : PO exp PF         { int x = new_label();
+                                fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x);
+                                $$ = x; }
 ;
 
 if : IF                       {}
 ;
 
-else : ELSE                   {int x = new_label();fprintf(stdout,"goto label%d;\nlabel%d:\n",x,$<num>-1); $$ = x;}
+else : ELSE                   { int x = new_label();
+                                fprintf(stdout,"goto label%d;\nlabel%d:\n",x,$<num>-1);
+                                $$ = x; }
 ;
 
 // II.4. Iterations
@@ -208,9 +212,13 @@ else : ELSE                   {int x = new_label();fprintf(stdout,"goto label%d;
 loop : while while_cond inst  { fprintf(stdout,"goto label%d;\nlabel%d:\n",$1,$2); }
 ;
 
-while_cond : PO exp PF        { int x = new_label(); fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x); $$=x; }
+while_cond : PO exp PF        { int x = new_label();
+                                fprintf(stdout,"if (!r%d) goto label%d;\n",$2->reg_num,x);
+                                $$=x; }
 
-while : WHILE                 { int x = new_label(); fprintf(stdout,"label%d:\n",x); $$=x; }
+while : WHILE                 { int x = new_label();
+                                fprintf(stdout,"label%d:\n",x);
+                                $$=x; }
 ;
 
 
@@ -285,19 +293,19 @@ exp
                                 x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d == r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
-| exp DIFF exp                {if ($1->type_val != $3->type_val) print_error("non compatible types");
+| exp DIFF exp                { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
                                 x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d != r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
-| exp AND exp                 {if ($1->type_val != $3->type_val) print_error("non compatible types");
+| exp AND exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
                                 x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = r%d & r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
                                 $$ = x; } // SIDI
-| exp OR exp                  {if ($1->type_val != $3->type_val) print_error("non compatible types");
+| exp OR exp                  { if ($1->type_val != $3->type_val) print_error("non compatible types");
                                 attribute x = new_attribute();
                                 x->type_val = $1->type_val;
                                 x->reg_num = new_register(x);

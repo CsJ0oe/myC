@@ -1,0 +1,13 @@
+int *a,b,c;
+float **f;
+int f() { int x; x = 10; }
+a = 3; 
+while (a == 5) b = 1;
+a = 6;
+if (a == 6) {
+	float d;
+	b = a;
+	d = 10.10;
+}
+a = 1;
+*(a+1) = b;

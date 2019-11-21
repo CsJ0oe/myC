@@ -18,7 +18,6 @@ attribute copy_attribute(attribute x) {
   return r;
 }
 
-
 char* str_concat(char* a, char* b) {
     char* r = malloc(strlen(a)+strlen(b)+2);
     strcpy(r,"");
@@ -43,7 +42,7 @@ void print_error(char* ch) {
 };
 
 int type_compatible(attribute x1, attribute x2){
-  return 1;
+  return x1->type_val == x2->type_val;
 };
 
 char* print_star(int n) {
@@ -62,15 +61,11 @@ int new_label() {
     return next_label++;
 };
 
-
-
 //// BLOCK
 
 int next_block = 2;
-
 int queue_block[MAX_BLOCKS] = {1,0};
 int queue_block_p = 1;
-
 
 int enter_block(){
   queue_block[queue_block_p++] = next_block++;
