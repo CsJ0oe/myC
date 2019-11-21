@@ -172,8 +172,9 @@ oblock block fblock           { ; }
 // II.1 Affectations
 
 aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
-                                if (!type_compatible(x,$3)) print_error("non compatible types");
-                                fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
+                                if (type_compatible(x,$3) ) fprintf(stdout, "%s = r%d;\n",x->name,$3->reg_num);
+                                else if(x->type_val == FLOAT && $3->type_val == INT) fprintf(stdout, "%s = (float)r%d;\n",x->name,$3->reg_num);
+                                else  print_error("non compatible types");
                                 /* FOR DEBUG */ fprintf(stdout, "// %s = %s;\n",x->name,$3->name);
                               }
 | STAR exp EQ exp             { if (!type_compatible($2,$4)) print_error("non compatible types");
