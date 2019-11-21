@@ -43,7 +43,7 @@ void print_error(char* ch) {
 };
 
 int type_compatible(attribute x1, attribute x2){
-  return 1;
+  return x1->type_val == x2->type_val;
 };
 
 char* print_star(int n) {
