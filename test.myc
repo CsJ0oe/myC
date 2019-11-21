@@ -1,6 +1,7 @@
 int *a,b,c;
-float **f;
+float **f,v;
 int f() { int x; x = 10; }
+v = b;
 a = 3; 
 while (a == 5) b = 1;
 a = 6;

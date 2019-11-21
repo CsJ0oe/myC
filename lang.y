@@ -7,17 +7,17 @@
 
 #include <stdio.h>
 #include <string.h>
-  
+
 extern int yylex();
 extern int yyparse();
 
 void yyerror (char* s) {
   printf ("%s\n",s);
 }
-		
+
 %}
 
-%union { 
+%union {
 	attribute val;
 	char* str;
 	type typ;
@@ -35,19 +35,19 @@ void yyerror (char* s) {
 %token DOT ARR
 
 %type <val> exp type vir
-%type <str> vlist 
-%type <typ> typename 
+%type <str> vlist
+%type <typ> typename
 %type <num> while_cond while bool_cond else pointer
 
 %left DIFF EQUAL SUP INF       // low priority on comparison
-%left PLUS MOINS               // higher priority on + - 
+%left PLUS MOINS               // higher priority on + -
 %left STAR DIV                 // higher priority on * /
 %left OR                       // higher priority on ||
 %left AND                      // higher priority on &&
-%left DOT ARR                  // higher priority on . and -> 
+%left DOT ARR                  // higher priority on . and ->
 %nonassoc UNA                  // highest priority on unary operator
- 
-%start prog  
+
+%start prog
 
 %%
 
@@ -148,7 +148,7 @@ typename
 ;
 
 pointer
-: pointer STAR                 { $$ = $1 + 1; } 
+: pointer STAR                 { $$ = $1 + 1; }
 | STAR                         { $$ = 1; }
 ;
 
@@ -256,7 +256,7 @@ exp
                                 $$ = x; }
 | PO exp PF                   { $$ = $2; }
 | ID                          { attribute x = get_symbol_value($1->name);
-                                if (!in_block(x)) print_error("not declared\n");
+                                if (!in_block(x)) print_error("not declared (not in scope)\n");
                                 x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = %s;\n",x->reg_num,x->name);
                                 $$ = x; }
@@ -269,7 +269,7 @@ exp
                                 x->num_star--;
                                 x->reg_num = new_register(x);
                                 fprintf(stdout,"r%d = *r%d;\n",x->reg_num,$2->reg_num);
-                                $$ = x; 
+                                $$ = x;
                               }
 
 // II.3.2. Booléens
@@ -319,7 +319,7 @@ exp
 
 | app                         {}
 ;
-       
+
 // II.4 Applications de fonctions
 
 app : ID PO args PF;
@@ -334,7 +334,6 @@ arglist : exp VIR arglist     {}
 
 
 
-%% 
+%%
 
-int main () { printf ("? "); return yyparse ();} 
-
+int main () { printf ("? "); return yyparse ();}
