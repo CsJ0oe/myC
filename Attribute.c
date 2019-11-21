@@ -87,7 +87,8 @@ int curr_block(){
 };
 
 int in_block(attribute x) {
-  for(int i = 0; i < queue_block_p; i++) {
+  int i;
+  for(i = 0; i < queue_block_p; i++) {
       if (x->num_block == queue_block[i])
         return 1;
   }
