@@ -18,8 +18,8 @@ typedef enum {VOD, INT, FLOAT, STRCT} type;
 struct ATTRIBUTE {
   char* name;
   int int_val;
-  //float float_val;
-  //type type_val;
+  float float_val;
+  type type_val;
   int num_star;
   int num_ref;
   int reg_num;
