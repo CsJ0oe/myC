@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
+extern FILE * fileh;
+extern FILE * filec;
+
 attribute new_attribute() {
   attribute r;
   r  = malloc (sizeof(struct ATTRIBUTE));
@@ -51,7 +54,7 @@ attribute eval_exp(attribute x1, char * op,attribute x2)
       attribute x=new_attribute();
       x->type_val = x1->type_val;
       x->reg_num = new_register(x);
-      fprintf(stdout,"r%d = r%d %s r%d;\n",x->reg_num,x1->reg_num,op,x2->reg_num);
+      fprintf(filec,"r%d = r%d %s r%d;\n",x->reg_num,x1->reg_num,op,x2->reg_num);
       return x;
     }
     else
@@ -59,11 +62,11 @@ attribute eval_exp(attribute x1, char * op,attribute x2)
       attribute x=new_attribute();
       x->type_val = FLOAT;
       x->reg_num = new_register(x);
-      fprintf(stdout,"r%d = ",x->reg_num);
+      fprintf(filec,"r%d = ",x->reg_num);
       if(x1->type_val == FLOAT)
-        fprintf(stdout,"r%d %s (float)r%d;\n",x1->reg_num,op,x2->reg_num);
+        fprintf(filec,"r%d %s (float)r%d;\n",x1->reg_num,op,x2->reg_num);
       else 
-        fprintf(stdout,"(float)r%d %s r%d;\n",x1->reg_num,op,x2->reg_num);
+        fprintf(filec,"(float)r%d %s r%d;\n",x1->reg_num,op,x2->reg_num);
       return x;
     }
 
@@ -76,7 +79,7 @@ char* print_star(int n) {
 
 int next_reg_num = 1;
 int new_register(attribute x) {
-    fprintf(stdout,"%s %sr%d;\n",print_type(x->type_val),print_star(x->num_star),next_reg_num);
+    fprintf(fileh,"%s %sr%d;\n",print_type(x->type_val),print_star(x->num_star),next_reg_num);
     return next_reg_num++;
 };
 

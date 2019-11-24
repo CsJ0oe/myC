@@ -24,6 +24,7 @@ struct ATTRIBUTE {
   int num_ref;
   int reg_num;
   int num_block;
+  int num_label; // pour les fonctions
 };
 
 typedef struct ATTRIBUTE * attribute;
