@@ -24,17 +24,13 @@ struct ATTRIBUTE {
   int num_ref;
   int reg_num;
   int num_block;
-  
-  /* other attribute's fields can goes here */ 
-
 };
 
 typedef struct ATTRIBUTE * attribute;
 
 attribute new_attribute ();
-/* returns the pointeur to a newly allocated (but uninitialized) attribute value structure */
-
 attribute copy_attribute (attribute);
+/* returns the pointeur to a newly allocated (but uninitialized) attribute value structure */
 
 char* print_type(type t);
 void print_error(char* ch);
@@ -54,4 +50,3 @@ int in_block(attribute);
 
 
 #endif
-
