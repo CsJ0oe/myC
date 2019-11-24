@@ -44,6 +44,30 @@ void print_error(char* ch) {
 int type_compatible(attribute x1, attribute x2){
   return x1->type_val == x2->type_val;
 };
+attribute eval_exp(attribute x1, char * op,attribute x2)
+{ 
+  if(type_compatible(x1,x2))
+    {
+      attribute x=new_attribute();
+      x->type_val = x1->type_val;
+      x->reg_num = new_register(x);
+      fprintf(stdout,"r%d = r%d %s r%d;\n",x->reg_num,x1->reg_num,op,x2->reg_num);
+      return x;
+    }
+    else
+    {
+      attribute x=new_attribute();
+      x->type_val = FLOAT;
+      x->reg_num = new_register(x);
+      fprintf(stdout,"r%d = ",x->reg_num);
+      if(x1->type_val == FLOAT)
+        fprintf(stdout,"r%d %s (float)r%d;\n",x1->reg_num,op,x2->reg_num);
+      else 
+        fprintf(stdout,"(float)r%d %s r%d;\n",x1->reg_num,op,x2->reg_num);
+      return x;
+    }
+
+}
 
 char* print_star(int n) {
   if (n <= 0) return "";

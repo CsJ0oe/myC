@@ -45,6 +45,7 @@ int new_label();
 
 char* print_star(int);
 int type_compatible(attribute, attribute);
+attribute eval_exp(attribute x1, char * op,attribute x2);
 
 int enter_block();
 int exit_block();
