@@ -48,7 +48,7 @@ char* str_concat(char* a, char* b);
 
 
 int type_compatible(attribute, attribute);
-attribute eval_exp(attribute x1, char * op,attribute x2);
+attribute eval_exp(attribute x1, char * op,attribute x2, int);
 
 //// REGISTER && LABEL
 

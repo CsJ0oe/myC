@@ -40,7 +40,7 @@ void yyerror (char* s) {
 %type <val> exp type vir app
 %type <str> vlist
 %type <typ> typename
-%type <num> while_cond while bool_cond else pointer fun_head fun_id
+%type <num> while_cond while bool_cond else pointer fun_head fun_id pre_args
 
 %left DIFF EQUAL SUP INF       // low priority on comparison
 %left PLUS MOINS               // higher priority on + -
@@ -173,7 +173,8 @@ vlist: ID vir vlist            { if (exist_symbol_value($1->name)) print_error("
 vir : VIR                      { $$ = $<val>-1; }
 
 fun_body :
-oblock block fblock           { fprintf(filec,"goto *retReg;\n");
+oblock block fblock           { fprintf(filec,"retReg=pile[--pile_i].addr; //depiler\n");
+                                fprintf(filec,"goto *retReg;\n");
                                 fprintf(filec,"label%d:\n",$<num>0);
                               }
 ;
@@ -222,27 +223,34 @@ oblock block fblock           { /* FOR DEBUG */ fprintf(filec, "// block \n"); }
 // II.1 Affectations
 
 aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
-                                if (type_compatible(x,$3) ) fprintf(filec, "%s = r%d;\n",x->name,$3->reg_num);
-                                else if(x->type_val == FLOAT && $3->type_val == INT) fprintf(filec, "%s = (float)r%d;\n",x->name,$3->reg_num);
-                                else  print_error("non compatible types");
-                                fprintf(filec,"printf(\"%s = %s\\n\",%s);\n",x->name, "%d", x->name);
+                                if (!type_compatible(x,$3))
+                                    fprintf(filec, "%s = (%s)r%d;\n",x->name,print_type(x->type_val),$3->reg_num);
+                                else 
+                                    fprintf(filec, "%s = r%d;\n",x->name,$3->reg_num);
+                                fprintf(filec,"printf(\"%s = %s\\n\",%s);\n",x->name,(x->type_val==FLOAT)?"%f":"%d", x->name);
                               }
 | STAR ID EQ exp             {  attribute x = get_symbol_value($2->name);
-                                if (!type_compatible(x,$4)) print_error("non compatible types");
+                                attribute y = copy_attribute(x);
+                                y->num_star --;
                                 x->reg_num = new_register(x);
                                 fprintf(filec, "r%d = %s;\n",x->reg_num,x->name);
-                                fprintf(filec, "*r%d = r%d;\n",x->reg_num,$4->reg_num);
-                                fprintf(filec,"printf(\"*%s = %s\\n\",*%s);\n",x->name, "%d", $2->name);
+                                if (!type_compatible(y,$4))
+                                    fprintf(filec, "*r%d = (%s)r%d;\n",x->reg_num,print_type(x->type_val),$4->reg_num);
+                                else 
+                                    fprintf(filec, "*r%d = r%d;\n",x->reg_num,$4->reg_num);
+                                fprintf(filec,"printf(\"*%s = %s\\n\",*%s);\n",x->name,(x->type_val==FLOAT)?"%f":"%d", $2->name);
                               }
 /* | STAR exp EQ exp */  // on peut pas declarer des tableaux donc *(a+1)=2 n'est pas supporte
 ;
 
 
 // II.2 Return
-ret : RETURN exp              { fprintf(filec,"pile[pile_i++].%s_%s=r%d; //enpiler\n",
+ret : RETURN exp              { fprintf(filec,"retReg=pile[--pile_i].addr; //depiler\n");
+                                fprintf(filec,"pile[pile_i++].%s_%s=r%d; //enpiler\n",
                                               print_type($2->type_val),
                                               ($2->num_star > 0)?"p":"val",
                                               $2->reg_num);
+                                fprintf(filec,"goto *retReg;\n");
                               }
 
 | RETURN PO PF                { ; } // ERROR ??? RETURN PO exp PF
@@ -290,13 +298,13 @@ exp
                                 x->reg_num = new_register(x);
                                 fprintf(filec,"r%d = - r%d;\n",x->reg_num,$2->reg_num);
                                 $$ = x; }
-| exp PLUS exp                { attribute x = eval_exp($1,"+",$3);
+| exp PLUS exp                { attribute x = eval_exp($1,"+",$3,0);
                                 $$ = x; }
-| exp MOINS exp               { attribute x = eval_exp($1,"-",$3);
+| exp MOINS exp               { attribute x = eval_exp($1,"-",$3,0);
                                 $$ = x; }
-| exp STAR exp                { attribute x = eval_exp($1,"*",$3);
+| exp STAR exp                { attribute x = eval_exp($1,"*",$3,0);
                                 $$ = x; }
-| exp DIV exp                 {attribute x = eval_exp($1,"/",$3);
+| exp DIV exp                 { attribute x = eval_exp($1,"/",$3,0);
                                 $$ = x;}
 | PO exp PF                   { $$ = $2; }
 | ID                          { attribute x = get_symbol_value($1->name);
@@ -319,41 +327,17 @@ exp
 // II.3.2. Booléens
 
 | NOT exp %prec UNA           {}
-| exp INF exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
-                                attribute x = new_attribute();
-                                x->type_val = $1->type_val;
-                                x->reg_num = new_register(x);
-                                fprintf(filec,"r%d = r%d < r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+| exp INF exp                 { attribute x = eval_exp($1,"<",$3,1);
                                 $$ = x; }
-| exp SUP exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
-                                attribute x = new_attribute();
-                                x->type_val = $1->type_val;
-                                x->reg_num = new_register(x);
-                                fprintf(filec,"r%d = r%d > r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+| exp SUP exp                 { attribute x = eval_exp($1,">",$3,1);
                                 $$ = x; } 
-| exp EQUAL exp               { if ($1->type_val != $3->type_val) print_error("non compatible types");
-                                attribute x = new_attribute();
-                                x->type_val = $1->type_val;
-                                x->reg_num = new_register(x);
-                                fprintf(filec,"r%d = r%d == r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+| exp EQUAL exp               { attribute x = eval_exp($1,"==",$3,1);
                                 $$ = x; } 
-| exp DIFF exp                { if ($1->type_val != $3->type_val) print_error("non compatible types");
-                                attribute x = new_attribute();
-                                x->type_val = $1->type_val;
-                                x->reg_num = new_register(x);
-                                fprintf(filec,"r%d = r%d != r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+| exp DIFF exp                { attribute x = eval_exp($1,"!=",$3,1);
                                 $$ = x; } 
-| exp AND exp                 { if ($1->type_val != $3->type_val) print_error("non compatible types");
-                                attribute x = new_attribute();
-                                x->type_val = $1->type_val;
-                                x->reg_num = new_register(x);
-                                fprintf(filec,"r%d = r%d & r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+| exp AND exp                 { attribute x = eval_exp($1,"&&",$3,1);
                                 $$ = x; } 
-| exp OR exp                  { if ($1->type_val != $3->type_val) print_error("non compatible types");
-                                attribute x = new_attribute();
-                                x->type_val = $1->type_val;
-                                x->reg_num = new_register(x);
-                                fprintf(filec,"r%d = r%d | r%d;\n",x->reg_num,$1->reg_num,$3->reg_num);
+| exp OR exp                  { attribute x = eval_exp($1,"||",$3,1);
                                 $$ = x; } 
 
 // II.3.3. Structures
@@ -361,17 +345,15 @@ exp
 | exp ARR ID                  {}
 | exp DOT ID                  {}
 
-| app                         {}
+| app                         { /* FOR DEBUG */ fprintf(filec, "// appl \n"); }
 ;
 
 // II.4 Applications de fonctions
 
-app : ID PO args PF           { attribute x =  get_symbol_value($1->name);
-                                //if func snn error
-                                int l = new_label();
-                                fprintf(filec,"retReg = &&label%d;\n", l);
+app : ID pre_args args PF      { attribute x =  get_symbol_value($1->name);
+                                if (x->type_val != FUNC) print_error("not func");
                                 fprintf(filec,"goto label%d;\n", x->num_label);
-                                fprintf(filec,"label%d:\n", l);
+                                fprintf(filec,"label%d:\n", $2);
                                 if (x->type_ret != VOD) {
                                   attribute r = new_attribute();
                                   r->type_val = x->type_ret;
@@ -386,6 +368,12 @@ app : ID PO args PF           { attribute x =  get_symbol_value($1->name);
                                 }
                               }
 ;
+
+pre_args : PO                 { int l = new_label();
+                                fprintf(filec,"retReg = &&label%d;\n", l);
+                                fprintf(filec,"pile[pile_i++].addr=retReg; //enpiler\n");
+                                $$ = l;
+                              }
 
 args :  arglist               { ; }
 |                             { ; }
@@ -421,10 +409,10 @@ int main (int argc, char* argv[]) {
   fprintf(fileh, "#include <stdlib.h>\n");
   fprintf(fileh, "#include <string.h>\n");
   fprintf(fileh, "union {\nint  int_val;\nfloat float_val;\n"
-                  "int* int_p;\nfloat* float_p;\n"
+                  "void* addr;"
                   "} pile[255];\n");
   fprintf(fileh, "int pile_i = 0;\n");
-  fprintf(fileh, "int* retReg;\n");
+  fprintf(fileh, "void* retReg;\n");
 
   fprintf(filec, "#include \"../%s\"\n",argv[1]);
   fprintf(filec, "int main() {\n");

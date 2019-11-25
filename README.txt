@@ -18,6 +18,11 @@ On a également:
 NB:
     - le nom d'un variable doit etre unique dans tout le code source
     - si le type de retour d'une fonction != void elle doit contenir l'inst "return"
+
+TODO: 
+    - structs using a buffer + attribute offset
+
+
 Pour compiler le projet:
 $ make
 
@@ -29,27 +34,3 @@ $ make clean
 
 Pour lancer le compilateur:
 $ ./compil.sh test/test.myc
-
-
-TODO: 
-    - structs using a buffer + attribute offset
-    - handle casting correctly
-
-
-
-int a, c;
-int* b;
-
-void f(int f_x) { x = x+1; }
-
-a = 4;
-*b = 2;
-c = a + *b * 2;
-if (c == 10) {
-    c = c + 1;
-} else {
-    c = c + 10;
-}
-*b = c - a;
-f(a);
-a = 0;
