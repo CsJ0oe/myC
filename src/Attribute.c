@@ -10,7 +10,6 @@ extern FILE * filec;
 attribute new_attribute() {
   attribute r;
   r  = malloc (sizeof(struct ATTRIBUTE));
-  r->num_ref = 0;
   return r;
 };
 
@@ -47,6 +46,7 @@ void print_error(char* ch) {
 int type_compatible(attribute x1, attribute x2){
   return x1->type_val == x2->type_val;
 };
+
 attribute eval_exp(attribute x1, char * op,attribute x2)
 { 
   if(type_compatible(x1,x2))
@@ -76,6 +76,8 @@ char* print_star(int n) {
   if (n <= 0) return "";
   return str_concat("*",print_star(n-1));
 }
+
+//// REGISTER && LABEL
 
 int next_reg_num = 1;
 int new_register(attribute x) {

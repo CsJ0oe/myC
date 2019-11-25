@@ -21,10 +21,10 @@ void yyerror (char* s) {
 %}
 
 %union {
-	attribute val;
-	char* str;
-	type typ;
-	int num;
+  attribute val;
+  char* str;
+  type typ;
+  int num;
 }
 %token <val> NUMI NUMF
 %token <val> ID
@@ -37,10 +37,10 @@ void yyerror (char* s) {
 %token PLUS MOINS STAR DIV
 %token DOT ARR
 
-%type <val> exp type vir fun_id app
+%type <val> exp type vir app
 %type <str> vlist
 %type <typ> typename
-%type <num> while_cond while bool_cond else pointer
+%type <num> while_cond while bool_cond else pointer fun_head fun_id
 
 %left DIFF EQUAL SUP INF       // low priority on comparison
 %left PLUS MOINS               // higher priority on + -
@@ -80,7 +80,7 @@ decl: var_decl PV              { ; }
 ;
 
 // I.1. Variables
-var_decl : type vlist          { /* FOR DEBUG */ fprintf(filec, "// %s(%d) %s;\n",print_type($1->type_val),$1->num_star,$2); }
+var_decl : type vlist          { /* FOR DEBUG */ fprintf(fileh, "// %s(%d) %s;\n",print_type($1->type_val),$1->num_star,$2); }
 ;
 
 // I.2. Structures
@@ -96,21 +96,22 @@ attr : type ID                 {}
 // I.3. Functions
 
 fun_decl :
-type fun_head fun_body         { ; }
+type fun_head fun_body         { /* FOR DEBUG */ fprintf(filec, "// func \n"); }
 ;
 
 
-fun_head : fun_id PO PF            { $1->type_val = $<val>0->type_val;
-                                     set_symbol_value($1->name,$1);
-                                   }
-| fun_id PO params PF              { $1->type_val = $<val>0->type_val;
-                                     set_symbol_value($1->name,$1);
-                                   }
+fun_head : fun_id PO PF            { $$ = $1; }
+| fun_id PO params PF              { $$ = $1; }
 ;
 
 fun_id : ID                         { $1->num_label = new_label();
+                                      $1->type_ret = $<val>0->type_val;
+                                      $1->type_val = FUNC;
+                                      set_symbol_value($1->name,$1);
+                                      int x = new_label();
+                                      fprintf(filec,"goto label%d;\n",x);
                                       fprintf(filec,"label%d:\n",$1->num_label);
-                                      $$ = $1;
+                                      $$ = x;
                                     }
 ;
 
@@ -120,7 +121,9 @@ params: type ID vir params     { if (exist_symbol_value($2->name)) print_error("
                                  $2->num_block = curr_block();
                                  fprintf(fileh,"%s %s%s;\n",print_type($2->type_val),print_star($2->num_star),$2->name);
                                  $2->reg_num = new_register($2);
-                                 //fprintf(filec,"dep(r%d);\n",$2->reg_num);
+                                 fprintf(filec,"r%d=pile[--pile_i].%s_%s; //depiler\n",
+                                                $2->reg_num, print_type($2->type_val),
+                                                ($2->num_star > 0)?"p":"val");
                                  fprintf(filec,"%s = r%d;\n",$2->name,$2->reg_num);
                                  set_symbol_value($2->name,$2);
                                  /* FOR DEBUG */ //$$ = $2->name;
@@ -131,7 +134,9 @@ params: type ID vir params     { if (exist_symbol_value($2->name)) print_error("
                                  $2->num_block = curr_block();
                                  fprintf(fileh,"%s %s%s;\n",print_type($2->type_val),print_star($2->num_star),$2->name);
                                  $2->reg_num = new_register($2);
-                                 //fprintf(filec,"dep(r%d);\n",$2->reg_num);
+                                 fprintf(filec,"r%d=pile[--pile_i].%s_%s; //depiler\n",
+                                                $2->reg_num, print_type($2->type_val),
+                                                ($2->num_star > 0)?"p":"val");
                                  fprintf(filec,"%s = r%d;\n",$2->name,$2->reg_num);
                                  set_symbol_value($2->name,$2);
                                  /* FOR DEBUG */ //$$ = $2->name;
@@ -143,6 +148,12 @@ vlist: ID vir vlist            { if (exist_symbol_value($1->name)) print_error("
                                  $1->num_block = curr_block();
                                  fprintf(fileh,"%s %s%s;\n",print_type($1->type_val),print_star($1->num_star),$1->name);
                                  set_symbol_value($1->name,$1);
+                                 if ($1->num_star > 0) {
+                                      fprintf(filec,"%s = (%s%s)malloc(sizeof(%s%s));\n", $1->name,
+                                              print_type($1->type_val),print_star($1->num_star),
+                                              print_type($1->type_val),print_star($1->num_star)
+                                              );
+                                  }
                                  /* FOR DEBUG */  $$ = str_concat($1->name,str_concat(",",$3)); }
 | ID                           { if (exist_symbol_value($1->name)) print_error("already declared");
                                  $1->type_val = ($<val>0->type_val);
@@ -150,13 +161,21 @@ vlist: ID vir vlist            { if (exist_symbol_value($1->name)) print_error("
                                  $1->num_block = curr_block();
                                  fprintf(fileh,"%s %s%s;\n",print_type($1->type_val),print_star($1->num_star),$1->name);
                                  set_symbol_value($1->name,$1);
+                                 if ($1->num_star > 0) {
+                                      fprintf(filec,"%s = (%s%s)malloc(sizeof(%s%s));\n", $1->name,
+                                              print_type($1->type_val),print_star($1->num_star),
+                                              print_type($1->type_val),print_star($1->num_star)
+                                              );
+                                  }
                                  /* FOR DEBUG */ $$ = $1->name; }
 ;
 
-vir : VIR                      { attribute x = copy_attribute($<val>-1); x->num_star=0; $$ = x;}
+vir : VIR                      { $$ = $<val>-1; }
 
 fun_body :
-oblock block fblock           { fprintf(filec,"goto *retReg;\n"); }
+oblock block fblock           { fprintf(filec,"goto *retReg;\n");
+                                fprintf(filec,"label%d:\n",$<num>0);
+                              }
 ;
 
 // I.4. Types
@@ -188,17 +207,16 @@ pointer
 // II. Intructions
 
 inst_list: inst inst_list   {}
-//| inst                      { ; }
 |                           { ; }
 ;
 
 inst:
-oblock block fblock           { ; }
-| aff PV                      { ; }
-| ret PV                      { ; }
-| cond                        { ; }
-| loop                        { ; }
-| app PV                      { ; }
+oblock block fblock           { /* FOR DEBUG */ fprintf(filec, "// block \n"); }
+| aff PV                      { /* FOR DEBUG */ fprintf(filec, "// aff \n"); }
+| ret PV                      { /* FOR DEBUG */ fprintf(filec, "// ret \n"); }
+| cond                        { /* FOR DEBUG */ fprintf(filec, "// cond \n"); }
+| loop                        { /* FOR DEBUG */ fprintf(filec, "// loop \n"); }
+| app PV                      { /* FOR DEBUG */ fprintf(filec, "// appl \n"); }
 ;
 
 // II.1 Affectations
@@ -207,17 +225,26 @@ aff : ID EQ exp               { attribute x = get_symbol_value($1->name);
                                 if (type_compatible(x,$3) ) fprintf(filec, "%s = r%d;\n",x->name,$3->reg_num);
                                 else if(x->type_val == FLOAT && $3->type_val == INT) fprintf(filec, "%s = (float)r%d;\n",x->name,$3->reg_num);
                                 else  print_error("non compatible types");
-                                /* FOR DEBUG */ fprintf(filec, "// %s = %s;\n",x->name,$3->name);
+                                fprintf(filec,"printf(\"%s = %s\\n\",%s);\n",x->name, "%d", x->name);
                               }
-| STAR exp EQ exp             { if (!type_compatible($2,$4)) print_error("non compatible types");
-                                fprintf(filec, "*r%d = r%d;\n",$2->reg_num,$4->reg_num);
+| STAR ID EQ exp             {  attribute x = get_symbol_value($2->name);
+                                if (!type_compatible(x,$4)) print_error("non compatible types");
+                                x->reg_num = new_register(x);
+                                fprintf(filec, "r%d = %s;\n",x->reg_num,x->name);
+                                fprintf(filec, "*r%d = r%d;\n",x->reg_num,$4->reg_num);
+                                fprintf(filec,"printf(\"*%s = %s\\n\",*%s);\n",x->name, "%d", $2->name);
                               }
+/* | STAR exp EQ exp */  // on peut pas declarer des tableaux donc *(a+1)=2 n'est pas supporte
 ;
 
 
 // II.2 Return
-ret : RETURN exp              { //fprintf(filec,"enp(r%d);\n",$2->reg_num);
+ret : RETURN exp              { fprintf(filec,"pile[pile_i++].%s_%s=r%d; //enpiler\n",
+                                              print_type($2->type_val),
+                                              ($2->num_star > 0)?"p":"val",
+                                              $2->reg_num);
                               }
+
 | RETURN PO PF                { ; } // ERROR ??? RETURN PO exp PF
 ;
 
@@ -345,14 +372,18 @@ app : ID PO args PF           { attribute x =  get_symbol_value($1->name);
                                 fprintf(filec,"retReg = &&label%d;\n", l);
                                 fprintf(filec,"goto label%d;\n", x->num_label);
                                 fprintf(filec,"label%d:\n", l);
-                                if (x->type_val != VOD) {
+                                if (x->type_ret != VOD) {
                                   attribute r = new_attribute();
-                                  r->type_val = x->type_val;
-                                  r->reg_num = new_register(x);
-                                  //fprintf(filec,"dep(r%d);\n", r->reg_num);
+                                  r->type_val = x->type_ret;
+                                  r->reg_num = new_register(r);
+                                  fprintf(filec,"r%d=pile[--pile_i].%s_%s; //depiler\n",
+                                                r->reg_num, print_type(r->type_val),
+                                                (r->num_star > 0)?"p":"val");
                                   $$ = r;
                                 }
-                                $$ = NULL;
+                                else {
+                                  $$ = NULL;
+                                }
                               }
 ;
 
@@ -360,10 +391,16 @@ args :  arglist               { ; }
 |                             { ; }
 ;
 
-arglist : exp VIR arglist     { //fprintf(filec,"enp(r%d);\n", $1->reg_num);
-}
-| exp                         { //fprintf(filec,"enp(r%d);\n", $1->reg_num); 
-}
+arglist : exp VIR arglist     { fprintf(filec,"pile[pile_i++].%s_%s=r%d; //enpiler\n",
+                                              print_type($1->type_val),
+                                              ($1->num_star > 0)?"p":"val",
+                                              $1->reg_num);
+                              }
+| exp                         { fprintf(filec,"pile[pile_i++].%s_%s=r%d; //enpiler\n",
+                                              print_type($1->type_val),
+                                              ($1->num_star > 0)?"p":"val",
+                                              $1->reg_num);
+                              }
 ;
 
 
@@ -383,8 +420,11 @@ int main (int argc, char* argv[]) {
   fprintf(fileh, "#include <stdio.h>\n");
   fprintf(fileh, "#include <stdlib.h>\n");
   fprintf(fileh, "#include <string.h>\n");
+  fprintf(fileh, "union {\nint  int_val;\nfloat float_val;\n"
+                  "int* int_p;\nfloat* float_p;\n"
+                  "} pile[255];\n");
+  fprintf(fileh, "int pile_i = 0;\n");
   fprintf(fileh, "int* retReg;\n");
-
 
   fprintf(filec, "#include \"../%s\"\n",argv[1]);
   fprintf(filec, "int main() {\n");
